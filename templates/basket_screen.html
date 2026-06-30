@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Panier {{ basket.code }} | Kitunga AI{% endblock %}
+
+{% block content %}
+<section class="screen-shell basket-screen"
+  data-basket-code="{{ basket.code }}"
+  data-detail-url="{% url 'basket_api:detail' basket.code %}"
+  data-finish-url="{% url 'basket_api:finish' basket.code %}">
+  {% csrf_token %}
+  <div class="screen-head">
+    <div>
+      <p class="eyebrow">Session panier</p>
+      <h1>{{ basket.code }}</h1>
+      <p class="muted-copy">Ecran tactile Raspberry Pi, mise a jour automatique toutes les secondes.</p>
+    </div>
+    <div class="status-block">
+      <span id="basket-status" class="status-pill status-active">{{ basket.status }}</span>
+      <span class="device-chip">{{ basket.device_id }}</span>
+    </div>
+  </div>
+
+  <div id="basket-error" class="kitunga-alert kitunga-alert-error d-none"></div>
+
+  <div class="basket-layout">
+    <section class="panel basket-items-panel">
+      <div class="panel-title-row">
+        <div>
+          <p class="eyebrow">Objets detectes</p>
+          <h2>Contenu du panier</h2>
+        </div>
+        <span id="item-count" class="count-chip">0 article</span>
+      </div>
+      <div id="basket-items" class="basket-items"></div>
+      <div id="basket-empty" class="empty-state">
+        <strong>Aucun objet pour l'instant</strong>
+        <span>Quand la Raspberry Pi envoie un label IA reconnu, il apparait ici.</span>
+      </div>
+    </section>
+
+    <aside class="checkout-panel">
+      <div>
+        <p class="eyebrow">Total</p>
+        <div id="basket-total" class="total-amount">0.00 USD</div>
+        <p class="muted-copy">Le total est recalcule par Django apres chaque detection acceptee.</p>
+      </div>
+
+      <button id="finish-basket" class="primary-action" type="button">
+        Terminer le panier
+      </button>
+
+      <div id="qr-zone" class="qr-zone d-none">
+        <p class="eyebrow">Caisse</p>
+        <img id="qr-code" alt="QR code de caisse Kitunga AI">
+        <a id="checkout-link" href="#" target="_blank" rel="noreferrer">Ouvrir la page caisse</a>
+      </div>
+    </aside>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/basket_screen.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard | Kitunga AI{% endblock %}
+
+{% block content %}
+<section class="screen-shell dashboard-shell">
+  <div class="screen-head">
+    <div>
+      <p class="eyebrow">Pilotage MVP</p>
+      <h1>Kitunga AI</h1>
+      <p class="muted-copy">Suivi des paniers, transactions et stocks Fab Lab.</p>
+    </div>
+    <a class="primary-action compact-action" href="/admin/products/product/add/">Ajouter un produit</a>
+  </div>
+
+  <section class="metric-strip">
+    <div>
+      <span>Produits</span>
+      <strong>{{ product_count }}</strong>
+    </div>
+    <div>
+      <span>Paniers</span>
+      <strong>{{ basket_count }}</strong>
+    </div>
+    <div>
+      <span>En caisse</span>
+      <strong>{{ pending_count }}</strong>
+    </div>
+    <div>
+      <span>Transactions</span>
+      <strong>{{ paid_count }}</strong>
+    </div>
+    <div>
+      <span>Revenu demo</span>
+      <strong>{{ total_revenue }} USD</strong>
+    </div>
+  </section>
+
+  <div class="dashboard-grid">
+    <section class="panel">
+      <div class="panel-title-row">
+        <div>
+          <p class="eyebrow">Paniers recents</p>
+          <h2>Sessions</h2>
+        </div>
+      </div>
+      <div class="list-stack">
+        {% for basket in recent_baskets %}
+          <a class="list-row" href="{% url 'baskets:basket_screen' basket.code %}">
+            <span>
+              <strong>{{ basket.code }}</strong>
+              <small>{{ basket.device_id }}</small>
+            </span>
+            <span class="row-value">{{ basket.total_amount }} USD</span>
+            <span class="status-pill status-{{ basket.status }}">{{ basket.status }}</span>
+          </a>
+        {% empty %}
+          <div class="empty-state inline-empty">Aucune session pour le moment.</div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title-row">
+        <div>
+          <p class="eyebrow">Stock faible</p>
+          <h2>Produits a surveiller</h2>
+        </div>
+      </div>
+      <div class="list-stack">
+        {% for product in low_stock_products %}
+          <div class="list-row">
+            <span>
+              <strong>{{ product.name }}</strong>
+              <small>{{ product.detection_label }}</small>
+            </span>
+            <span class="row-value">{{ product.stock_quantity }}</span>
+          </div>
+        {% empty %}
+          <div class="empty-state inline-empty">Aucun stock faible.</div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="panel wide-panel">
+      <div class="panel-title-row">
+        <div>
+          <p class="eyebrow">Transactions</p>
+          <h2>Validations recentes</h2>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table kitunga-table align-middle">
+          <thead>
+            <tr>
+              <th>Panier</th>
+              <th>Methode</th>
+              <th>Responsable</th>
+              <th class="text-end">Montant</th>
+              <th class="text-end">Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for transaction in recent_transactions %}
+              <tr>
+                <td>{{ transaction.basket.code }}</td>
+                <td>{{ transaction.payment_method }}</td>
+                <td>{{ transaction.validated_by }}</td>
+                <td class="text-end">{{ transaction.amount }} USD</td>
+                <td class="text-end">{{ transaction.created_at|date:"d/m/Y H:i" }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="5" class="empty-table">Aucune transaction validee.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</section>
+{% endblock %}

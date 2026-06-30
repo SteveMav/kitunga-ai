@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Caisse {{ basket.code }} | Kitunga AI{% endblock %}
+
+{% block content %}
+<section class="screen-shell">
+  <div class="screen-head">
+    <div>
+      <p class="eyebrow">Validation caisse</p>
+      <h1>Panier {{ basket.code }}</h1>
+      <p class="muted-copy">Verifier les articles avant de valider le paiement de demonstration.</p>
+    </div>
+    <span class="status-pill status-{{ basket.status }}">{{ basket.status }}</span>
+  </div>
+
+  <div class="checkout-grid">
+    <section class="panel">
+      <div class="panel-title-row">
+        <div>
+          <p class="eyebrow">Resume</p>
+          <h2>Articles a encaisser</h2>
+        </div>
+        <strong class="table-total">{{ basket.total_amount }} USD</strong>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table kitunga-table align-middle">
+          <thead>
+            <tr>
+              <th>Produit</th>
+              <th>Categorie</th>
+              <th class="text-end">Qté</th>
+              <th class="text-end">Prix</th>
+              <th class="text-end">Sous-total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in basket.items.all %}
+              <tr>
+                <td><strong>{{ item.product.name }}</strong></td>
+                <td>{{ item.product.category }}</td>
+                <td class="text-end">{{ item.quantity }}</td>
+                <td class="text-end">{{ item.unit_price }} {{ item.product.currency }}</td>
+                <td class="text-end">{{ item.subtotal }} {{ item.product.currency }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="5" class="empty-table">Aucun article dans ce panier.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <aside class="panel payment-panel">
+      <p class="eyebrow">Paiement</p>
+      <h2>Mode demo cash</h2>
+      <p class="muted-copy">La validation cree une transaction, marque le panier comme paye et decremente le stock.</p>
+
+      {% if basket.status == "pending_checkout" %}
+        <form method="post" action="{% url 'checkout:validate' basket.checkout_token %}" class="validation-form">
+          {% csrf_token %}
+          <label for="validated_by">Responsable caisse</label>
+          <input id="validated_by" name="validated_by" type="text" value="demo_cashier" class="form-control">
+          <button class="primary-action" type="submit">Valider le paiement</button>
+          <a class="secondary-action" href="{% url 'dashboard:dashboard' %}">Annuler</a>
+        </form>
+      {% else %}
+        <div class="kitunga-alert kitunga-alert-warning">
+          Ce panier n'est pas en attente de caisse.
+        </div>
+      {% endif %}
+    </aside>
+  </div>
+</section>
+{% endblock %}

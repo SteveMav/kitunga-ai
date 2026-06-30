@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Ticket {{ basket.code }} | Kitunga AI{% endblock %}
+
+{% block content %}
+<section class="screen-shell ticket-shell">
+  <div class="ticket-header">
+    <p class="eyebrow">Ticket genere</p>
+    <h1>Paiement valide</h1>
+    <p class="muted-copy">Transaction {{ transaction.id }} pour le panier {{ basket.code }}.</p>
+  </div>
+
+  <section class="panel ticket-panel">
+    <div class="ticket-meta">
+      <span>Montant</span>
+      <strong>{{ transaction.amount }} USD</strong>
+    </div>
+    <div class="ticket-meta">
+      <span>Methode</span>
+      <strong>{{ transaction.payment_method }}</strong>
+    </div>
+    <div class="ticket-meta">
+      <span>Valide par</span>
+      <strong>{{ transaction.validated_by }}</strong>
+    </div>
+    <div class="ticket-meta">
+      <span>Date</span>
+      <strong>{{ transaction.created_at|date:"d/m/Y H:i" }}</strong>
+    </div>
+
+    <div class="ticket-lines">
+      {% for item in basket.items.all %}
+        <div>
+          <span>{{ item.product.name }} x {{ item.quantity }}</span>
+          <strong>{{ item.subtotal }} {{ item.product.currency }}</strong>
+        </div>
+      {% endfor %}
+    </div>
+
+    <a class="primary-action ticket-action" href="{% url 'dashboard:dashboard' %}">Retour dashboard</a>
+  </section>
+</section>
+{% endblock %}
