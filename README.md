@@ -61,3 +61,71 @@ Exemple de detection :
 6. Ouvrir le QR code ou le lien caisse.
 7. Valider le paiement.
 8. Verifier le stock dans Django Admin.
+
+## Client camera / Raspberry Pi
+
+Le dossier `kitunga_pi_client/` contient le client Python charge de capturer une image, lancer YOLO, puis envoyer la detection a Django.
+
+Installation :
+
+```powershell
+cd kitunga_pi_client
+python -m venv .venv
+.\.venv\Scripts\pip.exe install -r requirements.txt
+```
+
+Placer le modele YOLO entraine dans :
+
+```text
+kitunga_pi_client/models/best.pt
+```
+
+Mode camera PC :
+
+```powershell
+.\.venv\Scripts\python.exe main.py --api-base-url http://127.0.0.1:8000 --basket-code SB-001 --camera-index 0
+```
+
+Mode image fixe, pratique pour tester sans camera :
+
+```powershell
+.\.venv\Scripts\python.exe main.py --test-image C:\chemin\image.jpg --once --no-send
+```
+
+## Test camera telephone avec Iriun + Vite
+
+Le dossier `camera_tester/` contient une petite app Vite pour utiliser Iriun Webcam comme camera navigateur, lancer YOLO en continu et afficher les boites de detection en overlay sur la video.
+
+Lancer Django :
+
+```powershell
+.\.venv\Scripts\python.exe manage.py runserver 127.0.0.1:8000
+```
+
+Lancer Vite :
+
+```powershell
+cd camera_tester
+npm install
+npm run dev
+```
+
+Ouvrir :
+
+```text
+http://127.0.0.1:5174
+```
+
+En mode live, la page envoie des frames a Django, Django lance YOLO sur `kitunga_pi_client/models/best.pt`, puis Vite dessine les boites de detection sur la video. L'option `Ajouter automatiquement au panier` envoie les labels detectes au panier avec un cooldown pour eviter les doublons.
+
+Pour que la detection fonctionne depuis Django, installer les dependances YOLO dans l'environnement racine :
+
+```powershell
+.\.venv\Scripts\pip.exe install -r requirements.txt
+```
+
+Verifier que le modele existe :
+
+```text
+kitunga_pi_client/models/best.pt
+```

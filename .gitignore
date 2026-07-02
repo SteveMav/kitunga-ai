@@ -6,6 +6,12 @@ db.sqlite3
 media/qrcodes/
 media/products/
 output/
+kitunga_pi_client/captures/*
+!kitunga_pi_client/captures/.gitkeep
+kitunga_pi_client/models/*.pt
+!kitunga_pi_client/models/.gitkeep
+camera_tester/node_modules/
+camera_tester/dist/
 .pytest_cache/
 .coverage
 htmlcov/
