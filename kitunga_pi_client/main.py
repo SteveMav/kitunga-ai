@@ -10,6 +10,7 @@ from camera import capture_image
 from config import (
     API_BASE_URL,
     BASKET_CODE,
+    BASKET_CODE_FILE,
     CAMERA_INDEX,
     CONFIDENCE_THRESHOLD,
     COOLDOWN_SECONDS,
@@ -25,6 +26,11 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Kitunga AI Raspberry Pi detection client")
     parser.add_argument("--api-base-url", default=API_BASE_URL, help="Django backend base URL")
     parser.add_argument("--basket-code", default=BASKET_CODE, help="Basket session code")
+    parser.add_argument(
+        "--basket-code-file",
+        default=str(BASKET_CODE_FILE),
+        help="Optional shared file containing the active basket code",
+    )
     parser.add_argument("--device-id", default=DEVICE_ID, help="Device identifier")
     parser.add_argument("--camera-index", type=int, default=CAMERA_INDEX, help="OpenCV camera index")
     parser.add_argument("--model-path", default=str(MODEL_PATH), help="YOLO model path")
@@ -50,6 +56,18 @@ def should_skip_duplicate(label: str, last_sent_at: dict[str, float], cooldown: 
     return previous is not None and (time.monotonic() - previous) < cooldown
 
 
+def read_basket_code(default_code: str, basket_code_file: str | Path | None) -> str:
+    if not basket_code_file:
+        return default_code
+
+    path = Path(basket_code_file)
+    try:
+        value = path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return default_code
+    return value or default_code
+
+
 def main() -> None:
     configure_logging()
     args = parse_args()
@@ -58,6 +76,7 @@ def main() -> None:
 
     logger.info("Kitunga AI client starting")
     logger.info("Backend=%s basket=%s device=%s", args.api_base_url, args.basket_code, args.device_id)
+    logger.info("Basket code file=%s", args.basket_code_file or "disabled")
     logger.info("Mode=%s", "test image" if args.test_image else f"camera index {args.camera_index}")
 
     try:
@@ -88,15 +107,21 @@ def main() -> None:
             elif should_skip_duplicate(result.label, last_sent_at, args.cooldown):
                 logger.info("Skipped duplicate label=%s within %.1fs cooldown.", result.label, args.cooldown)
             else:
-                logger.info("Detected label=%s confidence=%.2f", result.label, result.confidence)
+                logger.info(
+                    "Detected raw_label=%s label=%s confidence=%.2f",
+                    result.raw_label,
+                    result.label,
+                    result.confidence,
+                )
                 if args.no_send:
                     logger.info("No-send mode enabled, backend call skipped.")
                 else:
+                    basket_code = read_basket_code(args.basket_code, args.basket_code_file)
                     response = send_detection(
                         result.label,
                         result.confidence,
                         api_base_url=args.api_base_url,
-                        basket_code=args.basket_code,
+                        basket_code=basket_code,
                         device_id=args.device_id,
                     )
                     if response is not None:

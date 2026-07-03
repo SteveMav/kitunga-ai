@@ -167,7 +167,15 @@ def generate_qr_code(token: str, checkout_url: str) -> str:
     qr_dir.mkdir(parents=True, exist_ok=True)
     qr_path = qr_dir / f"{token}.png"
 
-    image = qrcode.make(checkout_url)
+    qr = qrcode.QRCode(
+        version=None,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=12,
+        border=4,
+    )
+    qr.add_data(checkout_url)
+    qr.make(fit=True)
+    image = qr.make_image(fill_color="black", back_color="white").convert("RGB")
     image.save(qr_path)
     return f"{settings.MEDIA_URL}qrcodes/{token}.png"
 

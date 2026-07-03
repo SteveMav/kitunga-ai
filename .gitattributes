@@ -1,0 +1,2 @@
+*.sh text eol=lf
+kitunga_pi_client/.env.example text eol=lf

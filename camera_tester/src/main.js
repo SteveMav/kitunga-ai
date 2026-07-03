@@ -1,6 +1,7 @@
 import "./styles.css";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+const CSRF_ENDPOINT = `${API_BASE_URL}/api/detections/csrf/`;
 const LIVE_ENDPOINT = `${API_BASE_URL}/api/detections/live-detect-frame/`;
 
 const state = {
@@ -11,6 +12,7 @@ const state = {
   liveTimer: null,
   latestDetections: [],
   lastAddedAt: new Map(),
+  csrfToken: "",
 };
 
 const offscreenCanvas = document.createElement("canvas");
@@ -118,6 +120,33 @@ function log(message, level = "info") {
   item.className = `log-${level}`;
   item.textContent = `${new Date().toLocaleTimeString("fr-FR")} - ${message}`;
   logs.prepend(item);
+}
+
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return decodeURIComponent(parts.pop().split(";").shift());
+  return "";
+}
+
+async function ensureCsrfToken() {
+  const cookieToken = getCookie("csrftoken");
+  if (cookieToken) {
+    state.csrfToken = cookieToken;
+    return cookieToken;
+  }
+
+  const response = await fetch(CSRF_ENDPOINT, {
+    method: "GET",
+    credentials: "same-origin",
+    headers: { Accept: "application/json" },
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.detail || "Impossible de recuperer le CSRF token.");
+
+  state.csrfToken = getCookie("csrftoken") || payload.csrfToken || "";
+  if (!state.csrfToken) throw new Error("CSRF token introuvable dans le navigateur.");
+  return state.csrfToken;
 }
 
 function setStatus(text, mode = "idle") {
@@ -229,9 +258,14 @@ async function detectLiveFrame() {
     form.append("device_id", document.querySelector("#deviceId").value || "IRIUN-PC-TEST");
     form.append("min_confidence", String(readNumber("#minConfidence", 0.25)));
     form.append("image", blob, `live_${Date.now()}.jpg`);
+    const csrfToken = await ensureCsrfToken();
 
     const response = await fetch(LIVE_ENDPOINT, {
       method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "X-CSRFToken": csrfToken,
+      },
       body: form,
     });
     const payload = await response.json();
@@ -328,11 +362,14 @@ async function maybeAddDetectionsToBasket(detections) {
 
 async function addDetectionToBasket({ basketCode, deviceId, label, confidence }) {
   try {
+    const csrfToken = await ensureCsrfToken();
     const response = await fetch(`${API_BASE_URL}/api/baskets/${basketCode}/add-detection/`, {
       method: "POST",
+      credentials: "same-origin",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
+        "X-CSRFToken": csrfToken,
       },
       body: JSON.stringify({
         device_id: deviceId,
@@ -419,3 +456,6 @@ requestPermissionThenList().catch((error) => {
   setStatus("camera idle", "idle");
   log(error.message, "error");
 });
+ensureCsrfToken()
+  .then(() => log("CSRF token pret.", "success"))
+  .catch((error) => log(error.message, "error"));

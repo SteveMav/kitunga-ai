@@ -1,7 +1,11 @@
 from decimal import Decimal
+from pathlib import Path
+from urllib.parse import urlparse
 
-from django.test import TestCase
+from django.conf import settings
+from django.test import TestCase, override_settings
 from django.urls import reverse
+from PIL import Image
 
 from baskets.models import BasketSession
 from checkout.services import validate_checkout
@@ -86,3 +90,29 @@ class BasketApiFlowTests(TestCase):
         self.assertEqual(transaction.amount, Decimal("15.00"))
         self.assertEqual(basket.status, BasketSession.Status.PAID)
         self.assertEqual(self.product.stock_quantity, 9)
+
+    @override_settings(PUBLIC_BASE_URL="http://10.20.20.174:8000")
+    def test_finish_generates_public_large_qr_code(self):
+        basket = BasketSession.objects.create(code="SB-QR", device_id="KITUNGA-PI-001")
+        self.client.post(
+            reverse("basket_api:add_detection", kwargs={"code": basket.code}),
+            {
+                "device_id": "KITUNGA-PI-001",
+                "detected_label": "arduino_uno",
+                "confidence": "0.91",
+            },
+            content_type="application/json",
+        )
+
+        response = self.client.post(reverse("basket_api:finish", kwargs={"code": basket.code}))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["checkout_url"].startswith("http://10.20.20.174:8000/checkout/t/"))
+
+        qr_path = Path(settings.MEDIA_ROOT) / urlparse(payload["qr_code_url"]).path.removeprefix(settings.MEDIA_URL)
+        self.assertTrue(qr_path.exists())
+        with Image.open(qr_path) as image:
+            self.assertEqual(image.width, image.height)
+            self.assertGreaterEqual(image.width, 400)
+        qr_path.unlink(missing_ok=True)

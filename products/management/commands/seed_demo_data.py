@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from django.core.management.base import BaseCommand
 
+from detections.label_catalog import LEGACY_LABEL_RENAMES
 from products.models import Product
 
 
@@ -17,7 +18,7 @@ DEMO_PRODUCTS = [
     {
         "name": "ESP32 DevKit",
         "category": "Microcontroleur",
-        "detection_label": "esp32_devkit",
+        "detection_label": "esp32",
         "price": Decimal("9.50"),
         "currency": "USD",
         "stock_quantity": 14,
@@ -25,7 +26,7 @@ DEMO_PRODUCTS = [
     {
         "name": "Capteur ultrason HC-SR04",
         "category": "Capteur",
-        "detection_label": "hc_sr04",
+        "detection_label": "sonar_sensor",
         "price": Decimal("3.00"),
         "currency": "USD",
         "stock_quantity": 18,
@@ -33,7 +34,7 @@ DEMO_PRODUCTS = [
     {
         "name": "Breadboard 830 points",
         "category": "Prototypage",
-        "detection_label": "breadboard_830",
+        "detection_label": "breadboard",
         "price": Decimal("4.00"),
         "currency": "USD",
         "stock_quantity": 12,
@@ -41,7 +42,7 @@ DEMO_PRODUCTS = [
     {
         "name": "Servo moteur SG90",
         "category": "Actionneur",
-        "detection_label": "servo_sg90",
+        "detection_label": "servo_motor",
         "price": Decimal("5.00"),
         "currency": "USD",
         "stock_quantity": 8,
@@ -49,7 +50,7 @@ DEMO_PRODUCTS = [
     {
         "name": "Module relais 1 canal",
         "category": "Module",
-        "detection_label": "relay_module_1ch",
+        "detection_label": "relay_module",
         "price": Decimal("2.75"),
         "currency": "USD",
         "stock_quantity": 6,
@@ -71,6 +72,14 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         created = 0
         updated = 0
+        renamed = 0
+
+        for old_label, new_label in LEGACY_LABEL_RENAMES.items():
+            product = Product.objects.filter(detection_label=old_label).first()
+            if product and not Product.objects.filter(detection_label=new_label).exists():
+                product.detection_label = new_label
+                product.save(update_fields=["detection_label"])
+                renamed += 1
 
         for product in DEMO_PRODUCTS:
             _, was_created = Product.objects.update_or_create(
@@ -84,6 +93,6 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"Demo data ready: {created} created, {updated} updated."
+                f"Demo data ready: {created} created, {updated} updated, {renamed} renamed."
             )
         )

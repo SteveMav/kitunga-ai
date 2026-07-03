@@ -18,6 +18,7 @@ python -m venv .venv
 copy .env.example .env
 .\.venv\Scripts\python.exe manage.py migrate
 .\.venv\Scripts\python.exe manage.py seed_demo_data
+.\.venv\Scripts\python.exe manage.py sync_model_catalog
 .\.venv\Scripts\python.exe manage.py createsuperuser
 .\.venv\Scripts\python.exe manage.py runserver 0.0.0.0:8000
 ```
@@ -50,6 +51,34 @@ Exemple de detection :
   "confidence": 0.91
 }
 ```
+
+## Labels YOLO
+
+Le modele ElectroCom-61 utilise des labels bruts comme `Servo-Motor`. Kitunga AI les convertit en labels simples Django comme `servo_motor`, puis cherche `Product.detection_label`.
+
+Pour aligner la base avec le modele :
+
+```powershell
+.\.venv\Scripts\python.exe manage.py sync_model_catalog
+```
+
+Voir [docs/model_label_mapping.md](docs/model_label_mapping.md) pour les correspondances principales.
+
+## QR code caisse sur telephone
+
+Pour scanner le QR code avec un telephone, le lien ne doit pas etre en `127.0.0.1`, car ce localhost pointerait vers le telephone. Mets l'IP Wi-Fi du laptop dans `.env` :
+
+```text
+PUBLIC_BASE_URL=http://10.20.20.174:8000
+```
+
+Puis lance Django sur le reseau local :
+
+```powershell
+.\.venv\Scripts\python.exe manage.py runserver 0.0.0.0:8000
+```
+
+Les nouveaux QR codes contiendront alors une URL du type `http://10.20.20.174:8000/checkout/t/.../`.
 
 ## Scenario de demo rapide
 
@@ -90,6 +119,47 @@ Mode image fixe, pratique pour tester sans camera :
 
 ```powershell
 .\.venv\Scripts\python.exe main.py --test-image C:\chemin\image.jpg --once --no-send
+```
+
+Ecran client Tkinter pour demo PC/Raspberry :
+
+```powershell
+cd kitunga_pi_client
+.\.venv\Scripts\python.exe tkinter_screen.py --api-base-url http://127.0.0.1:8000 --basket-code SB-001
+```
+
+Sur Raspberry Pi ou en reseau local :
+
+```powershell
+python tkinter_screen.py --api-base-url http://192.168.1.20:8000 --basket-code SB-001 --fullscreen
+```
+
+## Lancement sur Raspberry Pi
+
+Sur le laptop, Django doit etre accessible depuis le reseau Wi-Fi :
+
+```powershell
+.\.venv\Scripts\python.exe manage.py runserver 0.0.0.0:8000
+```
+
+Sur la Raspberry :
+
+```bash
+git clone https://github.com/SteveMav/kitunga-ai.git
+cd kitunga-ai/kitunga_pi_client
+bash scripts/install_pi.sh
+nano .env
+bash scripts/test_backend.sh
+bash scripts/test_camera.sh
+bash scripts/run_all.sh
+```
+
+Dans `.env`, `KITUNGA_API_BASE_URL` doit etre l'IP du laptop, pas `127.0.0.1`.
+
+Le modele YOLO doit etre copie manuellement dans :
+
+```text
+kitunga_pi_client/models/best.pt
 ```
 
 ## Test camera telephone avec Iriun + Vite
