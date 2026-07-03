@@ -2,6 +2,165 @@
 
 Client Python pour envoyer les detections camera/YOLO au backend Django Kitunga AI.
 
+## Etapes exactes sur Raspberry Pi
+
+Ces etapes sont le chemin recommande pour installer et lancer la demo sur une Raspberry Pi fraiche.
+
+### 1. Demarrer le backend sur le laptop
+
+Sur le laptop, dans le repo Django :
+
+```powershell
+cd "C:\dev\makers\kitunga ai\kitunga-AI"
+.\.venv\Scripts\python.exe manage.py runserver 0.0.0.0:8000
+```
+
+Note l'IP Wi-Fi du laptop. Exemple :
+
+```text
+10.20.20.174
+```
+
+Dans le `.env` du backend, `PUBLIC_BASE_URL` doit utiliser cette IP pour que le QR code soit scannable depuis un telephone :
+
+```text
+PUBLIC_BASE_URL=http://10.20.20.174:8000
+```
+
+### 2. Cloner le projet sur la Raspberry
+
+Si la branche Raspberry n'est pas encore mergee dans `main` :
+
+```bash
+git clone -b codex/raspberry-client https://github.com/SteveMav/kitunga-ai.git
+```
+
+Si elle est deja mergee :
+
+```bash
+git clone https://github.com/SteveMav/kitunga-ai.git
+```
+
+Puis :
+
+```bash
+cd kitunga-ai/kitunga_pi_client
+```
+
+### 3. Installer les dependances Raspberry
+
+```bash
+bash scripts/install_pi.sh
+```
+
+Ce script installe les paquets systeme utiles, cree `.venv`, installe les packages Python et cree `.env` si necessaire.
+
+### 4. Configurer la Raspberry
+
+Edite le fichier `.env` :
+
+```bash
+nano .env
+```
+
+Exemple de configuration :
+
+```text
+KITUNGA_API_BASE_URL=http://10.20.20.174:8000
+KITUNGA_DEVICE_ID=KITUNGA-PI-001
+KITUNGA_BASKET_CODE=SB-001
+KITUNGA_CAMERA_INDEX=0
+KITUNGA_CONFIDENCE_THRESHOLD=0.75
+KITUNGA_COOLDOWN_SECONDS=4
+KITUNGA_SCAN_INTERVAL_SECONDS=2
+```
+
+Important : `KITUNGA_API_BASE_URL` doit etre l'IP du laptop, pas `127.0.0.1`.
+
+### 5. Copier le modele YOLO
+
+Le modele n'est pas dans Git. Copie-le ici sur la Raspberry :
+
+```text
+kitunga_pi_client/models/best.pt
+```
+
+Depuis le dossier `kitunga_pi_client`, le fichier doit donc exister ici :
+
+```bash
+ls -lh models/best.pt
+```
+
+### 6. Tester la connexion backend
+
+```bash
+bash scripts/test_backend.sh
+```
+
+Si cette commande echoue, corrige d'abord :
+
+- l'IP dans `KITUNGA_API_BASE_URL` ;
+- le Wi-Fi ;
+- le firewall du laptop ;
+- le lancement Django en `0.0.0.0:8000`.
+
+### 7. Tester camera + YOLO sans envoyer au panier
+
+```bash
+bash scripts/test_camera.sh
+```
+
+Si la camera ne s'ouvre pas, essaie un autre index :
+
+```bash
+bash scripts/test_camera.sh --camera-index 1
+```
+
+Si le modele manque, verifie `models/best.pt`.
+
+### 8. Lancer la demo complete
+
+```bash
+bash scripts/run_all.sh
+```
+
+Ce script lance :
+
+- le detecteur YOLO ;
+- l'ecran client Tkinter en plein ecran ;
+- les logs dans `logs/detector.log` et `logs/screen.log`.
+
+Pour quitter l'ecran plein ecran, appuie sur `Echap`.
+
+### 9. Lancer les processus separement si besoin
+
+Terminal 1 :
+
+```bash
+bash scripts/run_detector.sh
+```
+
+Terminal 2 :
+
+```bash
+bash scripts/run_screen.sh
+```
+
+### 10. Verifier les logs
+
+```bash
+tail -f logs/detector.log
+tail -f logs/screen.log
+```
+
+Le detecteur lit le panier actif depuis :
+
+```text
+state/basket_code.txt
+```
+
+Quand l'ecran cree une nouvelle session, ce fichier est mis a jour automatiquement.
+
 ## Architecture Raspberry Pi
 
 Sur la Raspberry, le client lance deux processus :

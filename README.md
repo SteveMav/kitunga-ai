@@ -136,6 +136,8 @@ python tkinter_screen.py --api-base-url http://192.168.1.20:8000 --basket-code S
 
 ## Lancement sur Raspberry Pi
 
+Les etapes completes sont dans [kitunga_pi_client/README.md](kitunga_pi_client/README.md), section `Etapes exactes sur Raspberry Pi`.
+
 Sur le laptop, Django doit etre accessible depuis le reseau Wi-Fi :
 
 ```powershell
