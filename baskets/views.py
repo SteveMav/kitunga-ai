@@ -17,6 +17,7 @@ from .serializers import (
 from .services import (
     add_detection_to_basket,
     create_basket_session,
+    ensure_active_basket_session,
     finish_basket,
     remove_item_from_basket,
 )
@@ -46,6 +47,16 @@ def start_basket(request):
     basket = create_basket_session(serializer.validated_data["device_id"])
     payload = BasketSessionSerializer(basket, context={"request": request}).data
     return Response(payload, status=status.HTTP_201_CREATED)
+
+
+@csrf_exempt
+@api_view(["POST"])
+def ensure_active_basket(request):
+    serializer = StartBasketSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    basket, created = ensure_active_basket_session(serializer.validated_data["device_id"])
+    payload = BasketSessionSerializer(basket, context={"request": request}).data
+    return Response(payload, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
 
 @api_view(["GET"])

@@ -2,8 +2,15 @@ from decimal import Decimal
 
 from django.core.management.base import BaseCommand
 
-from detections.label_catalog import LEGACY_LABEL_RENAMES
 from products.models import Product
+
+DEMO_LABEL_RENAMES = {
+    "breadboard": "breadboard_830",
+    "esp32": "esp32_devkit",
+    "relay_module": "relay_module_1ch",
+    "servo_motor": "servo_sg90",
+    "sonar_sensor": "hc_sr04",
+}
 
 
 DEMO_PRODUCTS = [
@@ -18,7 +25,7 @@ DEMO_PRODUCTS = [
     {
         "name": "ESP32 DevKit",
         "category": "Microcontroleur",
-        "detection_label": "esp32",
+        "detection_label": "esp32_devkit",
         "price": Decimal("9.50"),
         "currency": "USD",
         "stock_quantity": 14,
@@ -26,7 +33,7 @@ DEMO_PRODUCTS = [
     {
         "name": "Capteur ultrason HC-SR04",
         "category": "Capteur",
-        "detection_label": "sonar_sensor",
+        "detection_label": "hc_sr04",
         "price": Decimal("3.00"),
         "currency": "USD",
         "stock_quantity": 18,
@@ -34,7 +41,7 @@ DEMO_PRODUCTS = [
     {
         "name": "Breadboard 830 points",
         "category": "Prototypage",
-        "detection_label": "breadboard",
+        "detection_label": "breadboard_830",
         "price": Decimal("4.00"),
         "currency": "USD",
         "stock_quantity": 12,
@@ -42,7 +49,7 @@ DEMO_PRODUCTS = [
     {
         "name": "Servo moteur SG90",
         "category": "Actionneur",
-        "detection_label": "servo_motor",
+        "detection_label": "servo_sg90",
         "price": Decimal("5.00"),
         "currency": "USD",
         "stock_quantity": 8,
@@ -50,7 +57,7 @@ DEMO_PRODUCTS = [
     {
         "name": "Module relais 1 canal",
         "category": "Module",
-        "detection_label": "relay_module",
+        "detection_label": "relay_module_1ch",
         "price": Decimal("2.75"),
         "currency": "USD",
         "stock_quantity": 6,
@@ -74,12 +81,16 @@ class Command(BaseCommand):
         updated = 0
         renamed = 0
 
-        for old_label, new_label in LEGACY_LABEL_RENAMES.items():
-            product = Product.objects.filter(detection_label=old_label).first()
-            if product and not Product.objects.filter(detection_label=new_label).exists():
-                product.detection_label = new_label
+        for current_label, target_label in DEMO_LABEL_RENAMES.items():
+            product = Product.objects.filter(detection_label=current_label).first()
+            target_exists = Product.objects.filter(detection_label=target_label).exists()
+            if product and not target_exists:
+                product.detection_label = target_label
                 product.save(update_fields=["detection_label"])
                 renamed += 1
+            elif product and target_exists and product.is_active:
+                product.is_active = False
+                product.save(update_fields=["is_active"])
 
         for product in DEMO_PRODUCTS:
             _, was_created = Product.objects.update_or_create(

@@ -23,6 +23,30 @@ class BasketApiFlowTests(TestCase):
             currency="USD",
             stock_quantity=10,
         )
+        self.servo = Product.objects.create(
+            name="Servo moteur SG90",
+            category="Actionneur",
+            detection_label="servo_sg90",
+            price=Decimal("5.00"),
+            currency="USD",
+            stock_quantity=8,
+        )
+
+    def test_ensure_active_creates_then_reuses_active_basket_for_device(self):
+        first_response = self.client.post(
+            reverse("basket_api:ensure_active"),
+            {"device_id": "KITUNGA-PI-001"},
+            content_type="application/json",
+        )
+        second_response = self.client.post(
+            reverse("basket_api:ensure_active"),
+            {"device_id": "KITUNGA-PI-001"},
+            content_type="application/json",
+        )
+
+        self.assertEqual(first_response.status_code, 201)
+        self.assertEqual(second_response.status_code, 200)
+        self.assertEqual(first_response.json()["code"], second_response.json()["code"])
 
     def test_detection_adds_product_and_recalculates_total(self):
         start_response = self.client.post(
@@ -48,6 +72,25 @@ class BasketApiFlowTests(TestCase):
         self.assertEqual(body["detection_status"], DetectionEvent.Status.ACCEPTED)
         self.assertEqual(body["basket"]["total_amount"], "15.00")
         self.assertEqual(body["basket"]["items"][0]["quantity"], 1)
+
+    def test_detection_accepts_raspberry_servo_label(self):
+        basket = BasketSession.objects.create(code="SB-PI", device_id="KITUNGA-PI-001")
+
+        response = self.client.post(
+            reverse("basket_api:add_detection", kwargs={"code": basket.code}),
+            {
+                "device_id": "KITUNGA-PI-001",
+                "detected_label": "servo_sg90",
+                "confidence": "0.90",
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        body = response.json()
+        self.assertEqual(body["detection_status"], DetectionEvent.Status.ACCEPTED)
+        self.assertEqual(body["basket"]["total_amount"], "5.00")
+        self.assertEqual(body["basket"]["items"][0]["product_name"], "Servo moteur SG90")
 
     def test_low_confidence_detection_is_not_added(self):
         basket = BasketSession.objects.create(code="SB-001", device_id="KITUNGA-PI-001")
