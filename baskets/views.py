@@ -1,6 +1,8 @@
+from django.conf import settings
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -15,6 +17,7 @@ from .serializers import (
 from .services import (
     add_detection_to_basket,
     create_basket_session,
+    ensure_active_basket_session,
     finish_basket,
     remove_item_from_basket,
 )
@@ -29,6 +32,14 @@ def _error_response(error: DjangoValidationError, response_status=status.HTTP_40
     return Response({"detail": messages[0]}, status=response_status)
 
 
+def _checkout_template_url(request) -> str:
+    path = reverse("checkout:checkout_detail", kwargs={"token": "__TOKEN__"})
+    if settings.PUBLIC_BASE_URL:
+        return f"{settings.PUBLIC_BASE_URL}{path}"
+    return request.build_absolute_uri(path)
+
+
+@csrf_exempt
 @api_view(["POST"])
 def start_basket(request):
     serializer = StartBasketSerializer(data=request.data)
@@ -38,6 +49,16 @@ def start_basket(request):
     return Response(payload, status=status.HTTP_201_CREATED)
 
 
+@csrf_exempt
+@api_view(["POST"])
+def ensure_active_basket(request):
+    serializer = StartBasketSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    basket, created = ensure_active_basket_session(serializer.validated_data["device_id"])
+    payload = BasketSessionSerializer(basket, context={"request": request}).data
+    return Response(payload, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+
 @api_view(["GET"])
 def basket_detail(request, code: str):
     basket = get_object_or_404(_basket_queryset(), code=code)
@@ -45,6 +66,7 @@ def basket_detail(request, code: str):
     return Response(payload)
 
 
+@csrf_exempt
 @api_view(["POST"])
 def add_detection(request, code: str):
     serializer = AddDetectionSerializer(data=request.data)
@@ -75,6 +97,7 @@ def add_detection(request, code: str):
     )
 
 
+@csrf_exempt
 @api_view(["POST"])
 def remove_item(request, code: str):
     serializer = RemoveItemSerializer(data=request.data)
@@ -95,11 +118,10 @@ def remove_item(request, code: str):
     return Response(payload)
 
 
+@csrf_exempt
 @api_view(["POST"])
 def finish_basket_api(request, code: str):
-    checkout_template = request.build_absolute_uri(
-        reverse("checkout:checkout_detail", kwargs={"token": "__TOKEN__"})
-    )
+    checkout_template = _checkout_template_url(request)
     try:
         basket = finish_basket(basket_code=code, checkout_url=checkout_template)
     except BasketSession.DoesNotExist:

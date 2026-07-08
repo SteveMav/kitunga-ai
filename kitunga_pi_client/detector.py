@@ -10,6 +10,7 @@ from config import MODEL_PATH
 class DetectionResult:
     label: str | None
     confidence: float
+    raw_label: str | None = None
 
     @property
     def found(self) -> bool:
@@ -49,15 +50,25 @@ class YoloObjectDetector:
         best_index = int(confidences.argmax().item())
         confidence = float(confidences[best_index].item())
         class_id = int(boxes.cls[best_index].item())
-        label = _label_from_class_id(result.names, class_id)
+        raw_label = _label_from_class_id(result.names, class_id)
+        label = canonical_label_for_model_label(raw_label)
 
-        return DetectionResult(label=label, confidence=confidence)
+        return DetectionResult(label=label, raw_label=raw_label, confidence=confidence)
 
 
 def _label_from_class_id(names, class_id: int) -> str:
     if isinstance(names, dict):
         return str(names.get(class_id, class_id))
     return str(names[class_id])
+
+
+def canonical_label_for_model_label(model_label: str) -> str:
+    normalized = model_label.strip().lower()
+    for char in (" ", "-", ".", "/"):
+        normalized = normalized.replace(char, "_")
+    while "__" in normalized:
+        normalized = normalized.replace("__", "_")
+    return normalized.strip("_")
 
 
 _default_detector: YoloObjectDetector | None = None

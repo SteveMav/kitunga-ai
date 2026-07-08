@@ -52,4 +52,4 @@ Depuis l'interface :
 - Cliquer `Lancer YOLO live`.
 - Garder `Ajouter automatiquement au panier` actif si tu veux que les labels detectes soient envoyes au panier avec cooldown.
 
-Si YOLO retourne `Servo-Motor`, Django le convertit en `servo_sg90`, puis le panier ajoute `Servo moteur SG90` quand la confiance est suffisante.
+Si YOLO retourne `Servo-Motor`, Django le convertit en `servo_motor`, puis le panier ajoute `Servo moteur SG90` quand la confiance est suffisante.

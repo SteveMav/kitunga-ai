@@ -1,6 +1,7 @@
 from pathlib import Path
 from unittest.mock import patch
 
+from django.test import Client
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
@@ -12,6 +13,22 @@ from products.models import Product
 
 
 class CaptureFrameTests(TestCase):
+    def test_csrf_token_endpoint_allows_browser_post_with_token(self):
+        client = Client(enforce_csrf_checks=True)
+        token_response = client.get(reverse("detections:csrf_token"))
+        self.assertEqual(token_response.status_code, 200)
+
+        token = client.cookies["csrftoken"].value
+        response = client.post(
+            reverse("detections:live_detect_frame"),
+            {"device_id": "IRIUN-PC-TEST"},
+            HTTP_ORIGIN="http://127.0.0.1:5174",
+            HTTP_X_CSRFTOKEN=token,
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["detail"], "Champ image requis.")
+
     def test_capture_frame_saves_uploaded_image(self):
         image = SimpleUploadedFile(
             "frame.jpg",
@@ -41,13 +58,13 @@ class CaptureFrameTests(TestCase):
         Product.objects.create(
             name="Servo moteur SG90",
             category="Actionneur",
-            detection_label="servo_sg90",
+            detection_label="servo_motor",
             price="5.00",
             currency="USD",
             stock_quantity=8,
         )
         basket = BasketSession.objects.create(code="SB-TEST", device_id="IRIUN-PC-TEST")
-        mock_detect.return_value = YoloDetection(label="servo_sg90", confidence=0.91)
+        mock_detect.return_value = YoloDetection(label="servo_motor", confidence=0.91)
         image = SimpleUploadedFile(
             "servo.jpg",
             b"\xff\xd8\xff\xe0" + b"kitunga-servo-test" + b"\xff\xd9",
@@ -65,7 +82,7 @@ class CaptureFrameTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
-        self.assertEqual(payload["detected_label"], "servo_sg90")
+        self.assertEqual(payload["detected_label"], "servo_motor")
         self.assertEqual(payload["detection_status"], "accepted")
         self.assertEqual(payload["basket"]["items"][0]["product_name"], "Servo moteur SG90")
         saved_path = Path(payload["capture"]["saved_path"])
@@ -75,7 +92,7 @@ class CaptureFrameTests(TestCase):
     def test_live_detect_frame_returns_detection_boxes(self, mock_detect_objects):
         mock_detect_objects.return_value = [
             YoloDetection(
-                label="servo_sg90",
+                label="servo_motor",
                 raw_label="Servo-Motor",
                 confidence=0.88,
                 box={
@@ -108,7 +125,7 @@ class CaptureFrameTests(TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertEqual(payload["status"], "detected")
-        self.assertEqual(payload["detections"][0]["label"], "servo_sg90")
+        self.assertEqual(payload["detections"][0]["label"], "servo_motor")
         self.assertEqual(payload["detections"][0]["raw_label"], "Servo-Motor")
         self.assertEqual(payload["detections"][0]["box"]["x1"], 0.1)
         Path(payload["capture"]["saved_path"]).unlink(missing_ok=True)

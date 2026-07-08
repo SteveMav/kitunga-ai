@@ -13,6 +13,15 @@ ALLOWED_HOSTS = [
     for host in os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost,0.0.0.0,*").split(",")
     if host.strip()
 ]
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "").rstrip("/")
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        "CSRF_TRUSTED_ORIGINS",
+        "http://127.0.0.1:5174,http://localhost:5174,http://127.0.0.1:5173,http://localhost:5173",
+    ).split(",")
+    if origin.strip()
+]
 
 INSTALLED_APPS = [
     "django.contrib.admin",

@@ -1,3 +1,4 @@
+from django.conf import settings
 from rest_framework import serializers
 
 from .models import BasketItem, BasketSession
@@ -49,8 +50,10 @@ class BasketSessionSerializer(serializers.ModelSerializer):
     def get_checkout_url(self, basket: BasketSession) -> str | None:
         if not basket.checkout_token:
             return None
-        request = self.context.get("request")
         path = f"/checkout/t/{basket.checkout_token}/"
+        if settings.PUBLIC_BASE_URL:
+            return f"{settings.PUBLIC_BASE_URL}{path}"
+        request = self.context.get("request")
         return request.build_absolute_uri(path) if request else path
 
     def get_qr_code_url(self, basket: BasketSession) -> str | None:

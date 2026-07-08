@@ -4,6 +4,14 @@ from django.core.management.base import BaseCommand
 
 from products.models import Product
 
+DEMO_LABEL_RENAMES = {
+    "breadboard": "breadboard_830",
+    "esp32": "esp32_devkit",
+    "relay_module": "relay_module_1ch",
+    "servo_motor": "servo_sg90",
+    "sonar_sensor": "hc_sr04",
+}
+
 
 DEMO_PRODUCTS = [
     {
@@ -71,6 +79,18 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         created = 0
         updated = 0
+        renamed = 0
+
+        for current_label, target_label in DEMO_LABEL_RENAMES.items():
+            product = Product.objects.filter(detection_label=current_label).first()
+            target_exists = Product.objects.filter(detection_label=target_label).exists()
+            if product and not target_exists:
+                product.detection_label = target_label
+                product.save(update_fields=["detection_label"])
+                renamed += 1
+            elif product and target_exists and product.is_active:
+                product.is_active = False
+                product.save(update_fields=["is_active"])
 
         for product in DEMO_PRODUCTS:
             _, was_created = Product.objects.update_or_create(
@@ -84,6 +104,6 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"Demo data ready: {created} created, {updated} updated."
+                f"Demo data ready: {created} created, {updated} updated, {renamed} renamed."
             )
         )

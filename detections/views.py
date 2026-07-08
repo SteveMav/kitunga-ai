@@ -4,6 +4,8 @@ from pathlib import Path
 
 from django.conf import settings
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.middleware.csrf import get_token
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from rest_framework import status
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -25,6 +27,12 @@ def detection_events(request):
     events = DetectionEvent.objects.select_related("basket").order_by("-created_at")[:50]
     serializer = DetectionEventSerializer(events, many=True)
     return Response(serializer.data)
+
+
+@ensure_csrf_cookie
+@api_view(["GET"])
+def csrf_token(request):
+    return Response({"csrfToken": get_token(request)})
 
 
 def _safe_device_id(value: str) -> str:
@@ -93,6 +101,7 @@ def _serialize_yolo_detection(detection):
     }
 
 
+@csrf_exempt
 @api_view(["POST"])
 @parser_classes([MultiPartParser, FormParser])
 def capture_frame(request):
@@ -113,6 +122,7 @@ def capture_frame(request):
     )
 
 
+@csrf_exempt
 @api_view(["POST"])
 @parser_classes([MultiPartParser, FormParser])
 def capture_and_detect(request):
@@ -165,6 +175,7 @@ def capture_and_detect(request):
     return Response(response_payload, status=status.HTTP_200_OK)
 
 
+@csrf_exempt
 @api_view(["POST"])
 @parser_classes([MultiPartParser, FormParser])
 def live_detect_frame(request):

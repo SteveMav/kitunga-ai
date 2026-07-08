@@ -8,6 +8,10 @@ media/products/
 output/
 kitunga_pi_client/captures/*
 !kitunga_pi_client/captures/.gitkeep
+kitunga_pi_client/logs/*
+!kitunga_pi_client/logs/.gitkeep
+kitunga_pi_client/state/*
+!kitunga_pi_client/state/.gitkeep
 kitunga_pi_client/models/*.pt
 !kitunga_pi_client/models/.gitkeep
 camera_tester/node_modules/

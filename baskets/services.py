@@ -17,6 +17,13 @@ from products.models import Product
 from .models import BasketItem, BasketSession
 
 CONFIDENCE_THRESHOLD = Decimal("0.75")
+DETECTION_LABEL_ALIASES = {
+    "breadboard": "breadboard_830",
+    "esp32": "esp32_devkit",
+    "relay_module": "relay_module_1ch",
+    "servo_motor": "servo_sg90",
+    "sonar_sensor": "hc_sr04",
+}
 
 
 def generate_basket_code() -> str:
@@ -30,6 +37,20 @@ def generate_basket_code() -> str:
 
 def create_basket_session(device_id: str) -> BasketSession:
     return BasketSession.objects.create(code=generate_basket_code(), device_id=device_id)
+
+
+def ensure_active_basket_session(device_id: str) -> tuple[BasketSession, bool]:
+    basket = (
+        BasketSession.objects.filter(
+            device_id=device_id,
+            status=BasketSession.Status.ACTIVE,
+        )
+        .order_by("-created_at")
+        .first()
+    )
+    if basket:
+        return basket, False
+    return create_basket_session(device_id), True
 
 
 def recalculate_basket_total(basket: BasketSession) -> BasketSession:
@@ -57,6 +78,18 @@ def _create_detection_event(
     )
 
 
+def _find_active_product(detected_label: str) -> Product | None:
+    labels = [detected_label]
+    alias = DETECTION_LABEL_ALIASES.get(detected_label)
+    if alias:
+        labels.append(alias)
+
+    return Product.objects.filter(
+        detection_label__in=labels,
+        is_active=True,
+    ).first()
+
+
 @transaction.atomic
 def add_detection_to_basket(
     *,
@@ -78,10 +111,7 @@ def add_detection_to_basket(
         )
         return basket, event, None
 
-    product = Product.objects.filter(
-        detection_label=detected_label,
-        is_active=True,
-    ).first()
+    product = _find_active_product(detected_label)
 
     if product is None:
         event = _create_detection_event(
@@ -167,7 +197,15 @@ def generate_qr_code(token: str, checkout_url: str) -> str:
     qr_dir.mkdir(parents=True, exist_ok=True)
     qr_path = qr_dir / f"{token}.png"
 
-    image = qrcode.make(checkout_url)
+    qr = qrcode.QRCode(
+        version=None,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=12,
+        border=4,
+    )
+    qr.add_data(checkout_url)
+    qr.make(fit=True)
+    image = qr.make_image(fill_color="black", back_color="white").convert("RGB")
     image.save(qr_path)
     return f"{settings.MEDIA_URL}qrcodes/{token}.png"
 
